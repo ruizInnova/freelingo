@@ -92,7 +92,7 @@ freelingo/
 - **Frontend:** Next.js 16, shadcn/ui, Tailwind CSS, Zustand, next-intl
 - **Backend:** FastAPI, SQLAlchemy async, Alembic, Pydantic v2
 - **Data:** PostgreSQL 16 and Redis 7
-- **LLM:** Ollama, OpenAI, Anthropic, or DeepSeek
+- **LLM:** Ollama, OpenAI, Anthropic, DeepSeek, or MiniMax
 - **Speech:** Kokoro-FastAPI or OpenAI TTS; faster-whisper or OpenAI Whisper
 - **Auth:** JWT access and refresh tokens with admin/user roles
 - **Deployment:** Docker Compose
@@ -142,7 +142,8 @@ disable this behavior.
 
 - The recommended model for Ollama is `gemma4:e4b`. It can be changed in `.env`.
 - The backend proxies all LLM, TTS, and STT calls so the frontend never talks directly to providers.
-- The `LLM_PROVIDER` field controls the LLM provider: `ollama` (local, recommended), `openai`, `anthropic`, or `deepseek`.
+- The `LLM_PROVIDER` field controls the LLM provider: `ollama` (local, recommended), `openai`, `anthropic`, `deepseek`, or `minimax`.
+- MiniMax uses its OpenAI-compatible endpoint with `MINIMAX_API_KEY`, `MINIMAX_BASE_URL`, and `MINIMAX_MODEL`; reasoning is separated from learner-visible output.
 - Anthropic's output budget is configurable with `ANTHROPIC_MAX_TOKENS` (default: `8192`) and must stay within the selected model's supported output limit.
 - `TTS_PROVIDER` and `STT_PROVIDER` are independent: `local` (Kokoro / faster-whisper) or `openai` (OpenAI API).
 - Conversation, token, freemium, and trial limits are configurable in `.env.example`. In general

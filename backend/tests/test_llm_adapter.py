@@ -316,6 +316,44 @@ class TestLLMAdapterInit:
         assert adapter.model == "claude-3-5-haiku-latest"
         assert adapter.client is None  # Anthropic uses _anthropic
 
+    def test_minimax_provider(self, monkeypatch):
+        monkeypatch.setattr("app.core.config.settings.LLM_PROVIDER", "minimax")
+        monkeypatch.setattr("app.core.config.settings.MINIMAX_API_KEY", "minimax-test")
+        monkeypatch.setattr(
+            "app.core.config.settings.MINIMAX_BASE_URL", "https://api.minimax.io/v1"
+        )
+        monkeypatch.setattr("app.core.config.settings.MINIMAX_MODEL", "MiniMax-M2.7")
+
+        from app.services.llm_adapter import LLMAdapter
+
+        adapter = LLMAdapter()
+        assert adapter.provider == "minimax"
+        assert adapter.model == "MiniMax-M2.7"
+        assert adapter.client is not None
+
+    async def test_minimax_separates_reasoning_from_visible_content(self, monkeypatch):
+        monkeypatch.setattr("app.core.config.settings.LLM_PROVIDER", "minimax")
+        monkeypatch.setattr("app.core.config.settings.MINIMAX_API_KEY", "minimax-test")
+        monkeypatch.setattr(
+            "app.core.config.settings.MINIMAX_BASE_URL", "https://api.minimax.io/v1"
+        )
+        monkeypatch.setattr("app.core.config.settings.MINIMAX_MODEL", "MiniMax-M2.7")
+
+        from app.services.llm_adapter import LLMAdapter
+
+        adapter = LLMAdapter()
+        create = AsyncMock(
+            return_value=SimpleNamespace(
+                choices=[SimpleNamespace(message=SimpleNamespace(content="Hello"))]
+            )
+        )
+        adapter.client.chat.completions.create = create
+
+        result = await adapter._do_chat([{"role": "user", "content": "Hi"}])
+
+        assert result == "Hello"
+        assert create.await_args.kwargs["extra_body"] == {"reasoning_split": True}
+
 
 # ---------------------------------------------------------------------------
 # LLMAdapter.chat (non-streaming) — OpenAI-compatible providers

@@ -98,6 +98,11 @@ token budget, and uses provider-specific stream/content shapes. OpenAI-compatibl
 request path with model-specific exceptions such as the supported GPT-5.6 tool-round reasoning option.
 These differences remain internal to the adapter.
 
+MiniMax is an OpenAI-compatible client with a dedicated provider configuration. Requests set
+`reasoning_split=true` so model reasoning remains separate from visible learner content. Tool streams
+retain the separated reasoning in the assistant continuation required by MiniMax; it is never yielded
+as tutor text. Existing retry and normalized-error behavior applies to MiniMax requests.
+
 ## Maintenance rules
 
 - Document implemented behavior, not desired retry or context-management policy.

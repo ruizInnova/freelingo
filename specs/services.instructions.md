@@ -13,7 +13,7 @@ The frontend never calls an external provider directly.
 
 ## LLM adapter
 
-`llm_adapter.py` provides provider-neutral access to Ollama, OpenAI, Anthropic, and DeepSeek.
+`llm_adapter.py` provides provider-neutral access to Ollama, OpenAI, Anthropic, DeepSeek, and MiniMax.
 
 - `chat(messages, stream=False, tools=None, tool_executor=None, fallback_messages=None)` returns text
   or a normalized async stream.
@@ -27,6 +27,8 @@ The frontend never calls an external provider directly.
   output.
 - The exception hierarchy includes `LLMError`, `LLMTimeoutError`, `LLMUnavailableError`,
   `LLMResponseError`, `LLMContextOverflowError`, and `LLMToolsUnsupportedError`.
+- MiniMax uses its OpenAI-compatible Chat Completions endpoint, requests separated reasoning, and
+  preserves that reasoning internally when continuing a native tool call.
 
 Retry, streaming-failure, and provider-output behavior is defined in
 `llm-error-handling.instructions.md`.

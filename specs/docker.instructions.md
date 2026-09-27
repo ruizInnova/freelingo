@@ -65,6 +65,10 @@ Operators must review database/data path, Redis password, JWT secret, CORS/cooki
 registration, email, available languages, LLM/speech providers, quotas, Stripe/freemium, logging, and
 analytics settings.
 
+Both Compose files forward `MINIMAX_API_KEY`, `MINIMAX_BASE_URL`, and `MINIMAX_MODEL` to the backend.
+The API key has no default and must remain outside version control; the base URL and model default to
+the official MiniMax OpenAI-compatible endpoint and `MiniMax-M2.7`.
+
 `BACKEND_URL` is the frontend's private backend-connectivity variable. The frontend also receives the
 optional public Umami script and site identifiers.
 

@@ -28,6 +28,7 @@ MAX_CONTEXT_TOKENS = {
     "openai": 128000,
     "anthropic": 200000,
     "deepseek": 128000,
+    "minimax": 204800,
     "ollama": 8192,
 }
 
@@ -254,6 +255,7 @@ class LLMToolStream(LLMStream):
         self.tool_calls: list[LLMToolCall] = []
         self.tool_results: list[LLMToolResult] = []
         self.tools_unsupported = tools_unsupported
+        self.reasoning_parts: list[str] = []
 
     def _add_usage(self, prompt: int | None, completion: int | None) -> None:
         if prompt is not None:
@@ -314,6 +316,9 @@ class LLMToolStream(LLMStream):
                 if not choices:
                     continue
                 delta = getattr(choices[0], "delta", None)
+                reasoning = getattr(delta, "reasoning_content", None)
+                if collect_calls and reasoning:
+                    self.reasoning_parts.append(str(reasoning))
                 text = getattr(delta, "content", None)
                 if text:
                     yield text
@@ -475,6 +480,7 @@ class LLMToolStream(LLMStream):
             initial_text,
             self.tool_calls,
             self.tool_results,
+            reasoning_content="".join(self.reasoning_parts) or None,
         )
         try:
             continuation = await self._adapter._call_with_retry(
@@ -538,6 +544,13 @@ class LLMAdapter:
                 api_key=settings.DEEPSEEK_API_KEY,
             )
             self.model = settings.DEEPSEEK_MODEL
+        elif self.provider == "minimax":
+            self.client = AsyncOpenAI(
+                base_url=settings.MINIMAX_BASE_URL,
+                api_key=settings.MINIMAX_API_KEY,
+                max_retries=0,
+            )
+            self.model = settings.MINIMAX_MODEL
         elif self.provider == "anthropic":
             self._anthropic = _anthropic.AsyncAnthropic(
                 api_key=settings.ANTHROPIC_API_KEY,
@@ -685,6 +698,8 @@ class LLMAdapter:
             ]
         if reasoning_effort is not None:
             extra["reasoning_effort"] = reasoning_effort
+        if self.provider == "minimax":
+            extra["extra_body"] = {"reasoning_split": True}
 
         response = await self.client.chat.completions.create(
             model=self.model,
@@ -770,6 +785,8 @@ class LLMAdapter:
         initial_text: str,
         calls: list[LLMToolCall],
         results: list[LLMToolResult],
+        *,
+        reasoning_content: str | None = None,
     ) -> list[dict]:
         if self.provider == "anthropic":
             assistant_content: list[dict] = []
@@ -809,13 +826,14 @@ class LLMAdapter:
             }
             for call in calls
         ]
-        continuation = messages + [
-            {
+        assistant_message = {
                 "role": "assistant",
                 "content": initial_text or None,
                 "tool_calls": assistant_tool_calls,
             }
-        ]
+        if reasoning_content is not None:
+            assistant_message["reasoning_content"] = reasoning_content
+        continuation = messages + [assistant_message]
         continuation.extend(
             {
                 "role": "tool",

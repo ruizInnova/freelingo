@@ -83,6 +83,9 @@ The normalized LLM adapter supports OpenAI-compatible and Anthropic native tool 
 4. One provider-native continuation receives the assistant call and tool result.
 5. Tools are omitted from continuation, preventing another round.
 
+For MiniMax, the provider's separated reasoning fragments are retained internally and included in the
+assistant continuation alongside the tool call. They are not exposed as tutor text or audio.
+
 Unknown tools, invalid content, exact duplicates, and persistence failure produce internal structured
 results. Tool payloads and errors are not exposed as tutor text or audio.
 
