@@ -12,6 +12,26 @@ import { useSpeechStore } from '@/store/speech'
 const TTS_TIMEOUT_MS = 60_000
 const ttsLogger = getLogger('tts')
 
+async function findBrowserVoice(language: string): Promise<SpeechSynthesisVoice | null> {
+  const normalized = language.toLowerCase()
+  const baseLanguage = normalized.split('-')[0]
+
+  // Chrome and mobile browsers often populate the voice list shortly after
+  // page load. Wait briefly so we do not accidentally use the device's
+  // Spanish default voice for English vocabulary.
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    const voices = window.speechSynthesis.getVoices()
+    const exact = voices.find((voice) => voice.lang.toLowerCase() === normalized)
+    const sameLanguage = voices.find((voice) =>
+      voice.lang.toLowerCase().startsWith(`${baseLanguage}-`)
+    )
+    if (exact || sameLanguage) return exact ?? sameLanguage ?? null
+    await new Promise((resolve) => setTimeout(resolve, 100))
+  }
+
+  return null
+}
+
 interface AudioPlayerProps {
   text: string
   voice?: string
@@ -195,13 +215,12 @@ export function AudioPlayer({
       setState('loading')
       const utterance = new SpeechSynthesisUtterance(text)
       utterance.lang = language || 'en-US'
-      const preferredLanguage = utterance.lang.toLowerCase()
-      const matchingVoice = window.speechSynthesis
-        .getVoices()
-        .find((candidate) =>
-          candidate.lang.toLowerCase().startsWith(preferredLanguage.split('-')[0])
-        )
-      if (matchingVoice) utterance.voice = matchingVoice
+      const matchingVoice = await findBrowserVoice(utterance.lang)
+      if (!matchingVoice) {
+        await playServerAudio()
+        return
+      }
+      utterance.voice = matchingVoice
       utterance.onstart = () => setState('playing')
       utterance.onend = () => {
         utteranceRef.current = null

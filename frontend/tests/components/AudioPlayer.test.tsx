@@ -175,7 +175,11 @@ describe('AudioPlayer', () => {
     )
     Object.defineProperty(window, 'speechSynthesis', {
       configurable: true,
-      value: { speak, cancel: vi.fn(), getVoices: vi.fn(() => []) },
+      value: {
+        speak,
+        cancel: vi.fn(),
+        getVoices: vi.fn(() => [{ lang: 'en-US', name: 'English US' }]),
+      },
     })
 
     render(
@@ -192,6 +196,7 @@ describe('AudioPlayer', () => {
 
     expect(speak).toHaveBeenCalledOnce()
     expect(spoken).toMatchObject({ text: 'I am a student.', lang: 'en-US' })
+    expect(spoken).toMatchObject({ voice: { lang: 'en-US' } })
     expect(fetchMock).not.toHaveBeenCalled()
     expect(screen.getByText(PAUSE)).toBeDefined()
   })
