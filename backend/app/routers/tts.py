@@ -49,7 +49,7 @@ async def text_to_speech(
     # For local Kokoro TTS, ignore the client voice param — only OpenAI voices
     # should be forwarded. Prevents 400 errors when user switches from OpenAI
     # to local and stale OpenAI voice names (e.g. "nova") remain in localStorage.
-    voice = body.voice if settings.TTS_PROVIDER != "local" else None
+    voice = body.voice if settings.TTS_PROVIDER == "openai" else None
     try:
         audio = await tts_service.synthesize(body.text, voice)
     except OPERATIONAL_SPEECH_ERRORS as exc:

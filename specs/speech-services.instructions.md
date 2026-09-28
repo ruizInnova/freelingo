@@ -7,8 +7,7 @@ applyTo: "backend/app/services/{tts_service,stt_service,speech_availability}.py,
 
 ## Purpose
 
-The backend is the only gateway to speech providers. Browser code never calls Kokoro, Whisper, or
-OpenAI speech APIs directly and never receives provider credentials.
+The backend is the only gateway to speech providers. Browser code never calls Kokoro, Cloudflare, Gemini, Whisper, or OpenAI speech APIs directly and never receives provider credentials.
 
 Text-to-speech (TTS) and speech-to-text (STT) are configured independently. Their backend service
 objects are created during FastAPI startup and stored in `app.state.tts_service` and
@@ -21,12 +20,17 @@ record speech require STT, and voice conversation requires both.
 
 TTS configuration:
 
-- `TTS_PROVIDER=local` selects Kokoro; `openai` selects OpenAI TTS.
-- `TTS_BASE_URL` defaults to `http://kokoro:8880`.
-- `TTS_VOICE` defaults to `af_heart` for Kokoro.
-- `OPENAI_TTS_MODEL` defaults to `tts-1`.
-- `OPENAI_TTS_VOICE` defaults to `nova`.
-- `OPENAI_TTS_SPEED` defaults to `1.0`.
+- `TTS_PROVIDER=local` selects Kokoro; `openai` selects OpenAI TTS; `chain` selects the ordered
+  Cloudflare, Gemini, and Kokoro fallback chain.
+- Chain mode omits Cloudflare or Gemini when its credentials are incomplete and always retains
+  Kokoro as the final provider.
+- `TTS_BASE_URL` defaults to `http://kokoro:8880`; `TTS_VOICE` defaults to `af_heart`.
+- `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_AI_TOKEN`, and `CLOUDFLARE_TTS_MODEL` configure MeloTTS.
+- `GEMINI_API_KEY`, `GEMINI_TTS_MODEL`, and `GEMINI_TTS_VOICE` configure Gemini Flash Lite TTS.
+- `TTS_CLOUD_TIMEOUT_SECONDS` defaults to 20 seconds and
+  `TTS_FALLBACK_COOLDOWN_SECONDS` defaults to 900 seconds.
+- `TTS_CACHE_PATH` defaults to `/data/audio/tts-cache` for persistent MP3 reuse in chain mode.
+- `OPENAI_TTS_MODEL`, `OPENAI_TTS_VOICE`, and `OPENAI_TTS_SPEED` configure standalone OpenAI TTS.
 
 STT configuration:
 
@@ -49,12 +53,35 @@ not expose provider credentials or the selected STT provider.
 `KokoroTTSService`:
 
 - checks health with `GET {base_url}/v1/models` and a five-second timeout;
-- synthesizes with `POST {base_url}/v1/audio/speech` and a 30-second timeout;
+- synthesizes with `POST {base_url}/v1/audio/speech` and a 55-second timeout;
 - sends model `kokoro`, text, voice, and MP3 response format;
 - uses the requested voice or configured `TTS_VOICE`;
 - raises on non-success HTTP responses;
 - returns response bytes without validating that they contain a non-empty MP3;
 - accepts a language argument but does not use it.
+
+### Cloudflare MeloTTS
+
+`CloudflareTTSService` sends text and the ISO language prefix to Workers AI and requests binary MP3.
+It is included only when both the account ID and API token exist. Its health check validates local
+configuration without consuming synthesis quota.
+
+### Gemini Flash Lite TTS
+
+`GeminiTTSService` uses the Interactions API with structured speech metadata and a configured voice.
+Gemini returns WAV for unary requests, so the adapter converts it to MP3 through `ffmpeg` before the
+bytes reach HTTP, persistent Listening files, Phrasebook files, or WebSocket conversation audio.
+Its health check validates local configuration without consuming synthesis quota.
+
+### Ordered fallback and cache
+
+`FallbackTTSService` tries configured providers in the fixed order Cloudflare, Gemini, then Kokoro.
+Authentication, payment, and quota responses place that provider in a configurable in-memory cooldown;
+other operational failures fall through for the current request. Programming errors remain visible.
+
+`CachedTTSService` persists successful MP3 bytes by normalized text, voice, and language. Cache writes
+are atomic. The cache survives container recreation through the existing `/data/audio` mount. Cooldown
+state is per backend worker and resets when the process restarts.
 
 ### OpenAI
 
@@ -96,8 +123,7 @@ There is no implicit English fallback.
 - Requires authentication.
 - Rate limit: `20/minute`.
 - Accepts JSON text of 1-5000 characters and an optional voice string.
-- Ignores the client voice when the configured provider is local, preventing stale OpenAI voice
-  preferences from reaching Kokoro.
+- Forwards the client voice only to standalone OpenAI TTS. Local and chain modes use each adapter's configured voice.
 - Returns `audio/mpeg` bytes.
 - Accepts or creates `X-TTS-Trace-ID` and returns backend synthesis and total latency headers.
 - Returns `503` when no TTS service object is registered or the provider has an operational failure.
@@ -181,6 +207,8 @@ cookies, and propagates request cancellation to the backend.
 
 Persistent MP3 uses include:
 
+- Chain synthesis cache: `{TTS_CACHE_PATH}/{sha256}.mp3`.
+
 - Listening: `{AUDIO_STORAGE_PATH}/listening/{exercise_id}.mp3`.
 - Phrasebook: hashed files below `{AUDIO_STORAGE_PATH}/phrasebook/{iso}/`.
 - OpenAI previews: `/app/tts_previews/{voice}.mp3`.
@@ -190,7 +218,7 @@ Whisper services use internal network addresses and are not called from the fron
 
 ## Availability semantics
 
-Startup creates configured adapter objects but does not prove provider health. Administrative health
+Startup creates configured adapter objects but does not prove remote provider health. Chain health succeeds when any active adapter is available without synthesizing billable audio. Administrative health
 checks call adapter `health()` methods. The authenticated speech-status endpoint provides a short,
 cached frontend availability signal. Every speech operation still handles a later provider failure,
 because availability can change after a successful probe.

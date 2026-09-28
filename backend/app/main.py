@@ -53,7 +53,14 @@ from app.routers import (
 from app.routers import config as config_router
 from app.routers import health as health_router
 from app.services.stt_service import OpenAISTTService, WhisperSTTService
-from app.services.tts_service import KokoroTTSService, OpenAITTSService
+from app.services.tts_service import (
+    CachedTTSService,
+    CloudflareTTSService,
+    FallbackTTSService,
+    GeminiTTSService,
+    KokoroTTSService,
+    OpenAITTSService,
+)
 
 
 def _run_migrations() -> None:
@@ -88,6 +95,39 @@ async def lifespan(app: FastAPI):  # noqa: ANN201
             model=settings.OPENAI_TTS_MODEL,
             voice=settings.OPENAI_TTS_VOICE,
             speed=settings.OPENAI_TTS_SPEED,
+        )
+    elif settings.TTS_PROVIDER == "chain":
+        providers = []
+        if settings.CLOUDFLARE_ACCOUNT_ID and settings.CLOUDFLARE_AI_TOKEN:
+            providers.append(
+                (
+                    "cloudflare",
+                    CloudflareTTSService(
+                        account_id=settings.CLOUDFLARE_ACCOUNT_ID,
+                        api_token=settings.CLOUDFLARE_AI_TOKEN,
+                        model=settings.CLOUDFLARE_TTS_MODEL,
+                        timeout=settings.TTS_CLOUD_TIMEOUT_SECONDS,
+                    ),
+                )
+            )
+        if settings.GEMINI_API_KEY:
+            providers.append(
+                (
+                    "gemini",
+                    GeminiTTSService(
+                        api_key=settings.GEMINI_API_KEY,
+                        model=settings.GEMINI_TTS_MODEL,
+                        voice=settings.GEMINI_TTS_VOICE,
+                        timeout=settings.TTS_CLOUD_TIMEOUT_SECONDS,
+                    ),
+                )
+            )
+        providers.append(
+            ("kokoro", KokoroTTSService(settings.TTS_BASE_URL, settings.TTS_VOICE))
+        )
+        app.state.tts_service = CachedTTSService(
+            FallbackTTSService(providers, settings.TTS_FALLBACK_COOLDOWN_SECONDS),
+            settings.TTS_CACHE_PATH,
         )
     else:
         app.state.tts_service = KokoroTTSService(settings.TTS_BASE_URL, settings.TTS_VOICE)

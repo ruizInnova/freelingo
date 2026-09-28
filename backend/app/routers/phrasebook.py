@@ -258,7 +258,7 @@ async def get_phrase_audio(
             )
 
         os.makedirs(audio_dir, exist_ok=True)
-        audio = await tts_service.synthesize(phrase.text)
+        audio = await tts_service.synthesize(phrase.text, language=language)
         tmp_path = cache_path + ".tmp"
         with open(tmp_path, "wb") as fh:  # noqa: PTH123
             fh.write(audio)

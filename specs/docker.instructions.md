@@ -15,7 +15,7 @@ applyTo: "docker-compose*.yml, .env.example, .env.dev, backend/Dockerfile, front
   revisions, then starts Uvicorn.
 - `frontend`: built from `frontend/Dockerfile`; exposes port 3000, talks to backend through private
   `BACKEND_URL`, and joins the external `proxy` network for Nginx Proxy Manager routing.
-- `kokoro`: version-pinned local CPU TTS image, used when `TTS_PROVIDER=local`.
+- `kokoro`: version-pinned local CPU TTS image, used for `TTS_PROVIDER=local` and as the final fallback for `TTS_PROVIDER=chain`.
 - `whisper`: version-pinned local CPU STT image, used when `STT_PROVIDER=local`.
 
 Ollama is not a Compose service. The default configuration expects it on the host through
@@ -50,7 +50,7 @@ The Compose files use bind mounts below `DATA_PATH`; they do not declare named v
 - PostgreSQL: `${DATA_PATH}/postgres`.
 - Redis: `${DATA_PATH}/redis`.
 - Avatars: `${DATA_PATH}/avatars`.
-- Generated audio: `${DATA_PATH}/audio`.
+- Generated audio and the chain TTS cache: `${DATA_PATH}/audio`.
 - TTS previews: `${DATA_PATH}/tts_previews`.
 - Whisper model cache: `${DATA_PATH}/whisper-cache`.
 
@@ -94,6 +94,10 @@ the remote deployment maintainer; migrations are not created locally.
 Production Compose pins Kokoro CPU `v0.9.0` and faster-whisper web service `v1.9.1`. Kokoro is limited
 to 2 CPUs and 2500 MiB; Whisper is limited to 2 CPUs and 1500 MiB, uses the `base` model by default,
 and stores downloaded model data in the persistent cache mount.
+
+Chain TTS passes Cloudflare and Gemini credentials only to the backend container. It writes cached MP3
+files below `${DATA_PATH}/audio/tts-cache`; Gemini WAV conversion uses `ffmpeg` installed in the backend
+image. Coolify secrets are runtime variables without interpolation or build-time exposure.
 
 When TTS or STT uses OpenAI, the corresponding local speech service is unnecessary. LLM, TTS, STT,
 recognition-language, and provider HTTP contracts belong to `services.instructions.md` and

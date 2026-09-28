@@ -107,8 +107,11 @@ best-effort and must not fail the visible tutor response.
 
 ## Speech
 
-`tts_service.py` exposes `synthesize(text, voice=None, language=None) -> bytes` through local Kokoro or
-OpenAI. Both adapters currently ignore `language`; provider voice configuration determines output.
+`tts_service.py` exposes `synthesize(text, voice=None, language=None) -> bytes` through local Kokoro,
+OpenAI, or an ordered Cloudflare MeloTTS, Gemini Flash Lite TTS, and Kokoro chain. Cloudflare derives
+its language code from the requested language; Gemini receives the language in structured delivery
+guidance. Chain results are normalized to MP3, cached persistently, and reused before another provider
+call. Quota or credential failures temporarily cool down the affected provider.
 
 `stt_service.py` exposes
 `transcribe(audio_bytes, filename, mime_type, *, language) -> str` through local faster-whisper or

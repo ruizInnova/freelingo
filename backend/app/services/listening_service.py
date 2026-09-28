@@ -117,7 +117,7 @@ async def generate_and_save_exercise(
     questions = [question.model_dump() for question in parsed.questions]
 
     # TTS synthesis — use the voice of the user who triggered generation
-    audio_bytes: bytes = await tts_service.synthesize(text, voice or None)
+    audio_bytes: bytes = await tts_service.synthesize(text, voice or None, target_language)
 
     # Prepare audio directory
     audio_dir = os.path.join(storage_path, "listening")
