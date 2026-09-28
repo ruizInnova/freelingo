@@ -33,7 +33,9 @@ class KokoroTTSService:
                     "voice": voice or self.voice,
                     "response_format": "mp3",
                 },
-                timeout=30.0,
+                # CPU synthesis can exceed 30 seconds during warmup or while
+                # the host is busy. The UI allows up to 60 seconds.
+                timeout=55.0,
             )
             response.raise_for_status()
             return response.content

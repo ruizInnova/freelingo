@@ -6,7 +6,10 @@ import { useAuthStore } from '@/store/auth'
 import { getLogger } from '@/lib/logger'
 import { useSpeechStore } from '@/store/speech'
 
-const TTS_TIMEOUT_MS = 15_000
+// CPU-only Kokoro can take more than 15 seconds on the first requests while
+// its model and execution paths warm up. Keep the browser request alive long
+// enough for those valid responses instead of showing a false playback error.
+const TTS_TIMEOUT_MS = 60_000
 const ttsLogger = getLogger('tts')
 
 interface AudioPlayerProps {
