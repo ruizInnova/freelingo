@@ -153,6 +153,49 @@ describe('AudioPlayer', () => {
 
   // ───────────── PLAY FLOW ─────────────
 
+  it('uses browser speech without calling the API when preferred', async () => {
+    let spoken: {
+      text: string
+      lang: string
+      onstart: (() => void) | null
+    } | null = null
+    const speak = vi.fn((utterance) => {
+      spoken = utterance
+      utterance.onstart?.()
+    })
+    vi.stubGlobal(
+      'SpeechSynthesisUtterance',
+      function (this: Record<string, unknown>, text: string) {
+        this.text = text
+        this.lang = ''
+        this.onstart = null
+        this.onend = null
+        this.onerror = null
+      }
+    )
+    Object.defineProperty(window, 'speechSynthesis', {
+      configurable: true,
+      value: { speak, cancel: vi.fn(), getVoices: vi.fn(() => []) },
+    })
+
+    render(
+      <AudioPlayer
+        text="I am a student."
+        preferBrowserVoice
+        language="en-US"
+      />
+    )
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button'))
+    })
+
+    expect(speak).toHaveBeenCalledOnce()
+    expect(spoken).toMatchObject({ text: 'I am a student.', lang: 'en-US' })
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(screen.getByText(PAUSE)).toBeDefined()
+  })
+
   it('calls POST /api/tts with correct body and headers on click', async () => {
     fetchMock.mockResolvedValueOnce(makeOkResponse())
 

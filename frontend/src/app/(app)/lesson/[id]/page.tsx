@@ -1277,7 +1277,12 @@ export default function LessonPage() {
                         )}
                       </div>
                       {item.example && (
-                        <AudioPlayer text={item.example} size="sm" />
+                        <AudioPlayer
+                          text={item.example}
+                          size="sm"
+                          preferBrowserVoice
+                          language={targetLanguageCode}
+                        />
                       )}
                     </div>
                     {item.definition && (

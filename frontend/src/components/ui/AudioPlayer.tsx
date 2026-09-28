@@ -17,6 +17,9 @@ interface AudioPlayerProps {
   voice?: string
   size?: 'sm' | 'md'
   className?: string
+  /** Prefer the device's built-in speech engine and fall back to the API. */
+  preferBrowserVoice?: boolean
+  language?: string
   /** If set, fetches pre-cached audio via GET from this URL instead of POST /api/tts */
   audioUrl?: string
 }
@@ -28,10 +31,13 @@ export function AudioPlayer({
   voice,
   size = 'sm',
   className = '',
+  preferBrowserVoice = false,
+  language,
   audioUrl,
 }: AudioPlayerProps) {
   const [state, setState] = useState<PlayerState>('idle')
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null)
   const controllerRef = useRef<AbortController | null>(null)
   const accessToken = useAuthStore((s) => s.accessToken)
   const t = useTranslations('audioPlayer')
@@ -46,20 +52,20 @@ export function AudioPlayer({
       ? (localStorage.getItem('tts_voice') ?? undefined)
       : undefined)
 
-  useEffect(() => () => controllerRef.current?.abort(), [])
+  useEffect(
+    () => () => {
+      controllerRef.current?.abort()
+      if (utteranceRef.current) window.speechSynthesis?.cancel()
+    },
+    []
+  )
 
-  async function handleClick() {
-    if (state === 'loading') return
-
-    if (state === 'playing') {
-      audioRef.current?.pause()
-      audioRef.current = null
+  async function playServerAudio() {
+    await checkSpeech()
+    if (useSpeechStore.getState().ttsAvailable !== true) {
       setState('idle')
       return
     }
-
-    await checkSpeech()
-    if (useSpeechStore.getState().ttsAvailable !== true) return
 
     setState('loading')
     controllerRef.current?.abort()
@@ -166,6 +172,53 @@ export function AudioPlayer({
     }
   }
 
+  async function handleClick() {
+    if (state === 'loading') return
+
+    if (state === 'playing') {
+      audioRef.current?.pause()
+      audioRef.current = null
+      if (utteranceRef.current) {
+        window.speechSynthesis.cancel()
+        utteranceRef.current = null
+      }
+      setState('idle')
+      return
+    }
+
+    if (
+      preferBrowserVoice &&
+      typeof window !== 'undefined' &&
+      'speechSynthesis' in window &&
+      'SpeechSynthesisUtterance' in window
+    ) {
+      setState('loading')
+      const utterance = new SpeechSynthesisUtterance(text)
+      utterance.lang = language || 'en-US'
+      const preferredLanguage = utterance.lang.toLowerCase()
+      const matchingVoice = window.speechSynthesis
+        .getVoices()
+        .find((candidate) =>
+          candidate.lang.toLowerCase().startsWith(preferredLanguage.split('-')[0])
+        )
+      if (matchingVoice) utterance.voice = matchingVoice
+      utterance.onstart = () => setState('playing')
+      utterance.onend = () => {
+        utteranceRef.current = null
+        setState('idle')
+      }
+      utterance.onerror = () => {
+        utteranceRef.current = null
+        void playServerAudio()
+      }
+      utteranceRef.current = utterance
+      window.speechSynthesis.speak(utterance)
+      return
+    }
+
+    await playServerAudio()
+  }
+
   const sizeClass =
     size === 'sm' ? 'px-2 py-1 text-fl-hint' : 'px-3 py-2 text-xs'
 
@@ -190,7 +243,7 @@ export function AudioPlayer({
   return (
     <button
       onClick={handleClick}
-      disabled={speechAvailable === false && state === 'idle'}
+      disabled={!preferBrowserVoice && speechAvailable === false && state === 'idle'}
       title={state === 'playing' ? t('stop') : t('listen')}
       aria-label={state === 'playing' ? t('ariaStop') : t('ariaListen')}
       className={`border font-mono tracking-widest uppercase transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${colorClass} ${sizeClass} ${className}`}
