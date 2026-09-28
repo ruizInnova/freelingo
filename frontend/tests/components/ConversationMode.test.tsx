@@ -25,6 +25,14 @@ vi.mock('next-intl', () => ({
 }))
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }))
 vi.mock('@/lib/api', () => ({ apiFetch: mocks.apiFetch }))
+vi.mock('@/store/speech', () => ({
+  useSpeechStore: (selector: (state: object) => unknown) =>
+    selector({
+      conversationAvailable: true,
+      checking: false,
+      check: vi.fn().mockResolvedValue(true),
+    }),
+}))
 vi.mock('@/lib/audio', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/audio')>()),
   createAudioQueue: () => ({ enqueue: mocks.enqueue, cancel: mocks.cancel }),
@@ -123,6 +131,7 @@ describe('ConversationMode session lifecycle', () => {
     mocks.getUserMedia.mockReturnValue(new Promise<MediaStream>((resolve) => { grant = resolve }))
     const view = render(<ConversationMode />)
     fireEvent.click(screen.getByRole('button', { name: 'start' }))
+    await waitFor(() => expect(mocks.getUserMedia).toHaveBeenCalledTimes(1))
     view.unmount()
     await act(async () => { grant(mic.stream) })
     expect(mic.stop).toHaveBeenCalledTimes(1)

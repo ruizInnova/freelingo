@@ -75,6 +75,7 @@ Zustand stores shared cross-route state:
 - `language`: active language, user languages, available codes, and language mutations.
 - `loading`: request counter and loading-bar completion state.
 - `progress`: shared lesson, unit, and level-test progress state.
+- `speech`: short-lived TTS, STT, and combined voice-conversation availability with retry support.
 - `theme`: persisted `system`, `dark`, or `light` preference under `fl-theme`.
 
 Screen-specific forms, async state, playback, selections, and modal state remain local React state.
@@ -131,7 +132,8 @@ options; the overall completion counter remains visible.
 Chat consumes JSON SSE events and must handle response reset before appending subsequent content.
 Voice conversation owns microphone/VAD and playback lifecycle with cancellation and late-callback
 guards. Resource audio components fetch authenticated blobs and release object URLs on replacement or
-unmount.
+unmount. Speech-dependent controls consult the shared availability state before requesting audio or
+microphone access; a provider outage does not block unrelated application features.
 
 Detailed behavior belongs to `platform.instructions.md`, `speech-services.instructions.md`, and
 `voice-conversation.instructions.md`.

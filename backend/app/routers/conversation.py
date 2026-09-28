@@ -37,6 +37,7 @@ from app.services.language_helpers import voice_session_title
 from app.services.llm_adapter import llm_adapter
 from app.services.memory_service import get_user_memories
 from app.services.quota_service import check_all_quotas
+from app.services.speech_availability import speech_services_status
 from app.services.subscription_service import is_subscribed
 from app.utils.db import db_session
 from app.utils.redis import redis_client as _redis_client
@@ -145,6 +146,23 @@ async def conversation_warmup(
 
     tts_service = getattr(request.app.state, "tts_service", None)
     stt_service = getattr(request.app.state, "stt_service", None)
+
+    tts_available, stt_available = await speech_services_status(tts_service, stt_service)
+    if not (tts_available and stt_available):
+        unavailable = []
+        if not tts_available:
+            unavailable.append("tts")
+        if not stt_available:
+            unavailable.append("stt")
+        return JSONResponse(
+            {
+                "detail": {
+                    "code": "speech_services_unavailable",
+                    "unavailable": unavailable,
+                }
+            },
+            status_code=503,
+        )
 
     tasks = []
     if tts_service:
@@ -294,19 +312,20 @@ async def conversation_ws(
             await websocket.close(code=1008)
             return
 
-        # --- Guard: TTS and STT must be enabled ---
+        # --- Guard: TTS and STT must be reachable before quota consumption ---
         tts_service = getattr(websocket.app.state, "tts_service", None)
         stt_service = getattr(websocket.app.state, "stt_service", None)
-        if tts_service is None or stt_service is None:
-            logger.warning("[conversation] TTS or STT disabled — rejecting WS for user %s", user_id)
+        tts_available, stt_available = await speech_services_status(tts_service, stt_service)
+        if not (tts_available and stt_available):
+            logger.warning("[conversation] Speech unavailable — rejecting WS for user %s", user_id)
             await websocket.send_json(
                 {
                     "type": "error",
-                    "code": "services_disabled",
-                    "message": "TTS and STT must be enabled for conversation mode.",
+                    "code": "speech_services_unavailable",
+                    "message": "Voice services are temporarily unavailable.",
                 }
             )
-            await websocket.close(code=1011)
+            await websocket.close(code=1013)
             return
 
         # --- CEFR level and target language from active StudyPlan ---

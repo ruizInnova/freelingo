@@ -11,6 +11,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 - MiniMax is available as an LLM provider through its OpenAI-compatible API, including streaming,
   structured output, usage reporting, and native tool continuations with private reasoning separated
   from learner-visible responses.
+- Authenticated `GET /api/speech/status` reports independent TTS, STT, and voice-conversation
+  availability without exposing provider errors or internal addresses.
+
+### Changed
+
+- Local Kokoro and faster-whisper deployment now uses version-pinned CPU images, bounded CPU and
+  memory resources, the Whisper `base` model, and a persistent Whisper model cache.
+- Speech availability is cached in shared frontend state. TTS playback, recording, and voice
+  conversation disable only the controls that depend on an unavailable service and can retry without
+  interrupting the rest of the application.
+
+### Fixed
+
+- Provider transport failures from TTS and STT now return controlled HTTP 503 responses. Voice
+  warmup and WebSocket startup reject unavailable speech services before consuming conversation quota
+  or creating a session.
 
 ## [1.9.25] - 2026-09-25
 

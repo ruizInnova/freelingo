@@ -27,8 +27,8 @@ The frontend startup order is:
 7. Open `/ws/conversation` and send the authentication payload.
 
 Warmup requires authentication, voice access, and absence of maintenance for non-admin users. It
-warms TTS and STT in parallel, logs individual failures, and still returns `status: "ready"`; it is
-not a strict availability check.
+checks TTS and STT first, returns HTTP 503 with `speech_services_unavailable` and the unavailable
+service names when either is unreachable, and otherwise warms both in parallel.
 
 After accepting the WebSocket handshake, the backend waits up to ten seconds for the first JSON
 frame. The payload can contain token, initial context, TTS voice, target language, post-assessment
@@ -38,6 +38,9 @@ demo token, and conversation ID. A missing or invalid token produces `auth_faile
 The session fixes user, plan, target language, CEFR level, native language, voice, limits, and access
 mode at connection time. They are not refreshed globally during the session, except memories and
 native language before each normal user turn.
+
+Before quota checks, trial consumption, or conversation persistence, WebSocket startup verifies both
+speech providers. Failure emits `speech_services_unavailable` and closes with code 1013.
 
 ## Language and plan resolution
 

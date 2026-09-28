@@ -10,6 +10,7 @@ from app.models.study_plan import StudyPlan
 from app.models.user import User
 from app.schemas.tts_stt import STTResponse
 from app.services.language_helpers import get_iso639
+from app.services.speech_availability import OPERATIONAL_SPEECH_ERRORS
 
 router = APIRouter(prefix="/api", tags=["stt"])
 logger = get_logger(__name__)
@@ -59,10 +60,17 @@ async def speech_to_text(
         model=getattr(stt_service, "model", None),
         audio_bytes=len(audio_bytes),
     )
-    text = await stt_service.transcribe(
-        audio_bytes,
-        audio.filename or "audio.webm",
-        mime_type=audio.content_type or "audio/webm",
-        language=language,
-    )
+    try:
+        text = await stt_service.transcribe(
+            audio_bytes,
+            audio.filename or "audio.webm",
+            mime_type=audio.content_type or "audio/webm",
+            language=language,
+        )
+    except OPERATIONAL_SPEECH_ERRORS as exc:
+        logger.warning("stt_service_unavailable", provider=type(stt_service).__name__)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="STT service is temporarily unavailable",
+        ) from exc
     return STTResponse(text=text)

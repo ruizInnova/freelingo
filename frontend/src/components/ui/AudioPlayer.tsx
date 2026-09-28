@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { useAuthStore } from '@/store/auth'
 import { getLogger } from '@/lib/logger'
+import { useSpeechStore } from '@/store/speech'
 
 const TTS_TIMEOUT_MS = 15_000
 const ttsLogger = getLogger('tts')
@@ -31,6 +32,9 @@ export function AudioPlayer({
   const controllerRef = useRef<AbortController | null>(null)
   const accessToken = useAuthStore((s) => s.accessToken)
   const t = useTranslations('audioPlayer')
+  const speechAvailable = useSpeechStore((s) => s.ttsAvailable)
+  const checkSpeech = useSpeechStore((s) => s.check)
+  const markTtsUnavailable = useSpeechStore((s) => s.markTtsUnavailable)
 
   // Resolve voice: explicit prop > user localStorage preference > backend default
   const resolvedVoice =
@@ -50,6 +54,9 @@ export function AudioPlayer({
       setState('idle')
       return
     }
+
+    await checkSpeech()
+    if (useSpeechStore.getState().ttsAvailable !== true) return
 
     setState('loading')
     controllerRef.current?.abort()
@@ -88,7 +95,10 @@ export function AudioPlayer({
       )
       clearTimeout(timeoutId)
       const fetchMs = performance.now() - fetchStart
-      if (!res.ok) throw new Error(`TTS error ${res.status}`)
+      if (!res.ok) {
+        if (res.status === 503) markTtsUnavailable()
+        throw new Error(`TTS error ${res.status}`)
+      }
 
       const blobStart = performance.now()
       const blob = await res.blob()
@@ -177,9 +187,10 @@ export function AudioPlayer({
   return (
     <button
       onClick={handleClick}
+      disabled={speechAvailable === false && state === 'idle'}
       title={state === 'playing' ? t('stop') : t('listen')}
       aria-label={state === 'playing' ? t('ariaStop') : t('ariaListen')}
-      className={`border font-mono tracking-widest uppercase transition-colors ${colorClass} ${sizeClass} ${className}`}
+      className={`border font-mono tracking-widest uppercase transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${colorClass} ${sizeClass} ${className}`}
     >
       {label}
     </button>

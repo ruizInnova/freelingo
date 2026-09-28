@@ -26,6 +26,15 @@ vi.mock('next-intl', () => ({
 const mockApiFetch = vi.hoisted(() => vi.fn())
 vi.mock('@/lib/api', () => ({ apiFetch: mockApiFetch }))
 
+vi.mock('@/store/speech', () => ({
+  useSpeechStore: (selector: (state: object) => unknown) =>
+    selector({
+      conversationAvailable: true,
+      checking: false,
+      check: vi.fn().mockResolvedValue(true),
+    }),
+}))
+
 vi.mock('@/lib/conversation-ws', () => ({
   buildConversationWsUrl: () => 'ws://test',
 }))
@@ -231,7 +240,9 @@ describe('ConversationMode word tooltip dismissal', () => {
 
     fireEvent.click(screen.getByText('startNew'))
 
-    expect(screen.queryByText('saveWord')).not.toBeInTheDocument()
-    expect(screen.queryByText('El perro corre')).not.toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.queryByText('saveWord')).not.toBeInTheDocument()
+      expect(screen.queryByText('El perro corre')).not.toBeInTheDocument()
+    })
   })
 })

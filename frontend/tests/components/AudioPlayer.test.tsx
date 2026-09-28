@@ -8,6 +8,20 @@ vi.mock('next-intl', () => ({
   useTranslations: () => (key: string) => key,
 }))
 
+vi.mock('@/store/speech', () => {
+  const state = {
+    ttsAvailable: true,
+    check: vi.fn().mockResolvedValue(true),
+    markTtsUnavailable: vi.fn(),
+  }
+  return {
+    useSpeechStore: Object.assign(
+      (selector: (value: typeof state) => unknown) => selector(state),
+      { getState: () => state },
+    ),
+  }
+})
+
 function makeOkResponse(blob?: Blob) {
   return {
     ok: true,
@@ -485,18 +499,17 @@ describe('AudioPlayer', () => {
     expect(() => unmount()).not.toThrow()
   })
 
-  it('unmounts without throwing while loading', () => {
+  it('unmounts without throwing while loading', async () => {
     // Use a promise that never settles so the component stays in loading state
     fetchMock.mockImplementationOnce(() => new Promise<Response>(() => {}))
 
     const { unmount } = render(<AudioPlayer text="Hello" />)
 
-    act(() => {
+    await act(async () => {
       fireEvent.click(screen.getByRole('button'))
     })
 
-    // After act flushes, React has committed the 'loading' state
-    expect(screen.getByText(LOADING)).toBeDefined()
+    await waitFor(() => expect(screen.getByText(LOADING)).toBeDefined())
     expect(() => unmount()).not.toThrow()
   })
 

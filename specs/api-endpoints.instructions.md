@@ -229,6 +229,10 @@ Chat endpoints require authentication and maintenance/access policy. Conversatio
 
 - **POST `/api/stt`** — Rate limit: 20/min. Authenticated multipart request with required `audio` and PostgreSQL-range positive integer `study_plan_id` fields. The backend verifies that the study plan belongs to the authenticated user, derives its BCP-47 `target_language`, converts it to an ISO 639-1 code, and passes that code explicitly to faster-whisper or OpenAI STT according to `STT_PROVIDER`. Returns `{ "text": string }`; returns 404 for a missing or foreign plan, 413 when audio exceeds 50 MiB, 422 for missing/invalid multipart fields, and 503 when STT is unavailable. Pronunciation lessons use the lesson's plan ID and flashcard speaking mode captures the current card's plan ID when recording starts, so stale active-language UI state cannot change the transcription language.
 
+## Speech availability — `/api/speech`
+
+- **GET `/api/speech/status`** — Auth: get_current_user. Checks configured TTS and STT providers concurrently with a bounded timeout. Returns `{tts, stt, voice_conversation}` availability without provider exception details. The combined voice-conversation state is available only when both providers are available.
+
 ---
 
 ## Contact — `/api/contact`
@@ -243,7 +247,7 @@ Full-duplex voice conversation pipeline.
 
 Both `POST /api/conversation/warmup` and `/ws/conversation` require an authenticated user with subscription or freemium access when `STRIPE_ENABLED=true`, except for a valid post-assessment voice trial token. Both reject non-admin users while maintenance mode is active.
 
-- **POST `/api/conversation/warmup`** — Rate limit: 20/min. Performs best-effort TTS and STT probes before opening the WebSocket and returns ready even when an individual probe fails. Optional body: `{trial_token}`.
+- **POST `/api/conversation/warmup`** — Rate limit: 20/min. Verifies TTS and STT before warming them. Returns HTTP 503 with `speech_services_unavailable` and an `unavailable` service list when either provider cannot be reached. Optional body: `{trial_token}`.
 
 **Authentication**: After the handshake, the client must send a JSON object containing a valid `token` within 10 seconds. The backend reads the token but does not require the `type` field to equal `auth`. Missing, malformed, or invalid authentication closes with code 1008.
 
@@ -267,6 +271,9 @@ Both `POST /api/conversation/warmup` and `/ws/conversation` require an authentic
 - **`session_warning`** — Payload: `{"remaining_seconds": N, "reason": "inactivity" | "max_duration"}`. Description: Timeout warning at 60 s
 - **`session_end`** — Payload: `{"reason": "..."}`. Description: Session closed by server
 - **`error`** — Payload: `{"code":"...","message":"..."}`. Description: Pipeline or policy error
+
+Before quota consumption and session creation, an unavailable TTS or STT provider emits
+`speech_services_unavailable` and closes the WebSocket with code 1013.
 
 **Features:**
 

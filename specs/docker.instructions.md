@@ -15,8 +15,8 @@ applyTo: "docker-compose*.yml, .env.example, .env.dev, backend/Dockerfile, front
   revisions, then starts Uvicorn.
 - `frontend`: published FreeLingo image; exposes port 3000 and talks to backend through private
   `BACKEND_URL`.
-- `kokoro`: local TTS GPU image, required only when `TTS_PROVIDER=local`.
-- `whisper`: local STT GPU image, required only when `STT_PROVIDER=local`.
+- `kokoro`: version-pinned local CPU TTS image, used when `TTS_PROVIDER=local`.
+- `whisper`: version-pinned local CPU STT image, used when `STT_PROVIDER=local`.
 
 Ollama is not a Compose service. The default configuration expects it on the host through
 `host.docker.internal:11434`. The backend service declares the Linux host-gateway mapping.
@@ -51,6 +51,7 @@ The Compose files use bind mounts below `DATA_PATH`; they do not declare named v
 - Avatars: `${DATA_PATH}/avatars`.
 - Generated audio: `${DATA_PATH}/audio`.
 - TTS previews: `${DATA_PATH}/tts_previews`.
+- Whisper model cache: `${DATA_PATH}/whisper-cache`.
 
 Avatar and media access remains controlled by backend endpoints; a host mount does not make files
 public.
@@ -87,15 +88,18 @@ The backend startup command applies existing Alembic revisions before starting U
 create or review migration files. Migration generation/application outside normal startup belongs to
 the remote deployment maintainer; migrations are not created locally.
 
-## GPU and provider selection
+## CPU speech and provider selection
 
-Production Compose declares NVIDIA reservations for Kokoro and Whisper. CPU-only operation requires
-an appropriate upstream CPU image and removal of the GPU reservation; exact upstream tags are not a
-stable FreeLingo contract.
+Production Compose pins Kokoro CPU `v0.9.0` and faster-whisper web service `v1.9.1`. Kokoro is limited
+to 2 CPUs and 2500 MiB; Whisper is limited to 2 CPUs and 1500 MiB, uses the `base` model by default,
+and stores downloaded model data in the persistent cache mount.
 
 When TTS or STT uses OpenAI, the corresponding local speech service is unnecessary. LLM, TTS, STT,
 recognition-language, and provider HTTP contracts belong to `services.instructions.md` and
 `speech-services.instructions.md`.
+
+The backend and frontend tolerate stopped local speech containers. Audio playback requires TTS,
+recording requires STT, and voice conversation requires both; unrelated features remain available.
 
 ## Host requirements
 

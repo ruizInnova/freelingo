@@ -12,6 +12,7 @@ from app.core.limiter import limiter
 from app.models.user import User
 from app.schemas.tts_stt import TTSRequest
 from app.services.prompts.common import TUTOR_DISPLAY_NAME
+from app.services.speech_availability import OPERATIONAL_SPEECH_ERRORS
 
 router = APIRouter(prefix="/api", tags=["tts"])
 logger = get_logger(__name__)
@@ -49,7 +50,14 @@ async def text_to_speech(
     # should be forwarded. Prevents 400 errors when user switches from OpenAI
     # to local and stale OpenAI voice names (e.g. "nova") remain in localStorage.
     voice = body.voice if settings.TTS_PROVIDER != "local" else None
-    audio = await tts_service.synthesize(body.text, voice)
+    try:
+        audio = await tts_service.synthesize(body.text, voice)
+    except OPERATIONAL_SPEECH_ERRORS as exc:
+        logger.warning("tts_service_unavailable", provider=type(tts_service).__name__)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="TTS service is temporarily unavailable",
+        ) from exc
     synth_ms = (time.perf_counter() - synth_t0) * 1000
     total_ms = (time.perf_counter() - t0) * 1000
 
@@ -108,7 +116,14 @@ async def voice_preview(
 
     if not os.path.exists(cache_path):
         os.makedirs(_PREVIEW_DIR, exist_ok=True)
-        audio = await tts_service.synthesize(_PREVIEW_TEXT, voice)
+        try:
+            audio = await tts_service.synthesize(_PREVIEW_TEXT, voice)
+        except OPERATIONAL_SPEECH_ERRORS as exc:
+            logger.warning("tts_service_unavailable", provider=type(tts_service).__name__)
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="TTS service is temporarily unavailable",
+            ) from exc
         # Write atomically via a temp file to avoid partial reads
         tmp_path = cache_path + ".tmp"
         with open(tmp_path, "wb") as fh:  # noqa: PTH123

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { apiFetch } from '@/lib/api'
 import { float32ToWav } from '@/lib/audio'
+import { useSpeechStore } from '@/store/speech'
 
 interface VoiceRecorderProps {
   studyPlanId: number
@@ -38,6 +39,9 @@ export function VoiceRecorder({
   const recordingContextRef = useRef<RecordingContext | null>(null)
   const mountedRef = useRef(true)
   const t = useTranslations('voiceRecorder')
+  const speechAvailable = useSpeechStore((s) => s.sttAvailable)
+  const checkSpeech = useSpeechStore((s) => s.check)
+  const markSttUnavailable = useSpeechStore((s) => s.markSttUnavailable)
 
   useEffect(() => {
     mountedRef.current = true
@@ -136,7 +140,10 @@ export function VoiceRecorder({
         body: formData,
         signal: controller.signal,
       })
-      if (!res.ok) throw new Error(`STT error ${res.status}`)
+      if (!res.ok) {
+        if (res.status === 503) markSttUnavailable()
+        throw new Error(`STT error ${res.status}`)
+      }
       const { text } = (await res.json()) as { text: string }
       if (!mountedRef.current) return
       await context.onTranscription(text)
@@ -220,6 +227,9 @@ export function VoiceRecorder({
 
     if (state !== 'idle') return
 
+    await checkSpeech()
+    if (useSpeechStore.getState().sttAvailable !== true) return
+
     setState('recording')
     await startRecording()
   }
@@ -247,7 +257,7 @@ export function VoiceRecorder({
   return (
     <button
       onClick={handleClick}
-      disabled={disabled && state === 'idle'}
+      disabled={(disabled || speechAvailable === false) && state === 'idle'}
       aria-label={state === 'recording' ? t('ariaStop') : t('ariaRecord')}
       className={`border px-3 py-2 font-mono text-xs tracking-widest uppercase transition-colors ${colorClass} ${className}`}
     >

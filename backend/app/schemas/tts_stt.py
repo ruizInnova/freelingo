@@ -8,3 +8,19 @@ class TTSRequest(BaseModel):
 
 class STTResponse(BaseModel):
     text: str
+
+
+class SpeechServiceStatus(BaseModel):
+    available: bool
+    provider: str
+
+
+class VoiceConversationStatus(BaseModel):
+    available: bool
+    reason: str | None = None
+
+
+class SpeechStatusResponse(BaseModel):
+    tts: SpeechServiceStatus
+    stt: SpeechServiceStatus
+    voice_conversation: VoiceConversationStatus

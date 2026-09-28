@@ -117,6 +117,10 @@ it from resolved session language.
 
 Provider details belong to `speech-services.instructions.md`.
 
+`speech_availability.py` checks both adapters concurrently with a bounded timeout and exposes only
+boolean availability. Operational transport and provider errors become unavailable state; programming
+errors continue to propagate.
+
 ## Listening and Reading
 
 `listening_service.py` resolves reusable exercises, generates structured content and TTS audio, scores

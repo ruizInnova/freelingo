@@ -30,6 +30,7 @@ import {
 import { shouldShowVoiceReviewPrompt } from '@/lib/review-prompt-triggers'
 import { MemorySavedToast } from '@/components/memory/MemorySavedToast'
 import { useTransientToast } from '@/hooks/useTransientToast'
+import { useSpeechStore } from '@/store/speech'
 
 interface TranscriptEntry {
   id: number
@@ -289,6 +290,9 @@ export default function ConversationMode({
   const accessToken = useAuthStore((s) => s.accessToken)
   const user = useAuthStore((s) => s.user)
   const setUser = useAuthStore((s) => s.setUser)
+  const speechAvailable = useSpeechStore((s) => s.conversationAvailable)
+  const speechChecking = useSpeechStore((s) => s.checking)
+  const checkSpeech = useSpeechStore((s) => s.check)
 
   // ─── UI State ────────────────────────────────────────────────────────────
   const [status, setStatus] = useState<ConvStatus>('loading')
@@ -939,6 +943,11 @@ export default function ConversationMode({
     )
       return
 
+    if (!(await checkSpeech(true))) {
+      setStatus('error')
+      return
+    }
+
     const startAttempt = ++startAttemptRef.current
     sessionActiveRef.current = true
 
@@ -1198,6 +1207,26 @@ export default function ConversationMode({
           ✕ {errorMsg}
         </div>
       )}
+      {speechAvailable === false && !sessionActive && (
+        <div className="border-fl-border bg-fl-surface text-fl-muted-2 mb-4 flex items-center justify-between gap-4 border px-4 py-3 font-mono text-xs">
+          <span>{t('errorServicesDisabled')}</span>
+          <button
+            type="button"
+            onClick={() => {
+              void checkSpeech(true).then((available) => {
+                if (available) {
+                  setErrorMsg(null)
+                  setStatus('ready')
+                }
+              })
+            }}
+            disabled={speechChecking}
+            className="border-fl-border text-fl-muted-1 hover:border-fl-border-2 hover:text-fl-fg shrink-0 border px-3 py-1.5 tracking-widest uppercase transition-colors disabled:opacity-50"
+          >
+            {speechChecking ? '...' : tCommon('retry')}
+          </button>
+        </div>
+      )}
       {status === 'ended' && (
         <div className="border-fl-border bg-fl-surface text-fl-muted-2 mb-4 border px-4 py-3 font-mono text-xs">
           {t('sessionEnded')}
@@ -1266,6 +1295,7 @@ export default function ConversationMode({
             sessionActive={sessionActive}
             onStart={handleStart}
             onStop={handleStop}
+            disabled={speechAvailable === false || speechChecking}
           />
         )}
       </div>

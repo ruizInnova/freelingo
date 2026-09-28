@@ -1,6 +1,6 @@
 ---
 description: "Current-state specification for text-to-speech and speech-to-text providers, backend gateways, plan-derived recognition language, persistent audio, and reusable frontend audio components."
-applyTo: "backend/app/services/{tts_service,stt_service}.py, backend/app/routers/{tts,stt}.py, backend/app/schemas/tts_stt.py, backend/app/core/config.py, backend/app/main.py, frontend/src/components/ui/{AudioPlayer,VoiceRecorder,exercise-audio-player}.tsx, frontend/src/app/api/{tts,stt}/**, docker-compose*.yml, .env.example"
+applyTo: "backend/app/services/{tts_service,stt_service,speech_availability}.py, backend/app/routers/{tts,stt,speech}.py, backend/app/schemas/tts_stt.py, backend/app/core/config.py, backend/app/main.py, frontend/src/components/ui/{AudioPlayer,VoiceRecorder,exercise-audio-player}.tsx, frontend/src/store/speech.ts, frontend/src/app/api/{tts,stt}/**, docker-compose*.yml, .env.example"
 ---
 
 # Speech Services
@@ -13,6 +13,9 @@ OpenAI speech APIs directly and never receives provider credentials.
 Text-to-speech (TTS) and speech-to-text (STT) are configured independently. Their backend service
 objects are created during FastAPI startup and stored in `app.state.tts_service` and
 `app.state.stt_service`.
+
+Speech is optional for the general platform. Features that synthesize audio require TTS, features that
+record speech require STT, and voice conversation requires both.
 
 ## Provider configuration
 
@@ -97,8 +100,7 @@ There is no implicit English fallback.
   preferences from reaching Kokoro.
 - Returns `audio/mpeg` bytes.
 - Accepts or creates `X-TTS-Trace-ID` and returns backend synthesis and total latency headers.
-- Returns `503` only when no TTS service object is registered; provider exceptions otherwise
-  propagate through normal server error handling.
+- Returns `503` when no TTS service object is registered or the provider has an operational failure.
 
 ### `GET /api/tts/preview/{voice}`
 
@@ -119,8 +121,15 @@ There is no implicit English fallback.
 - Preserves the uploaded filename and MIME type, with WebM defaults when absent.
 - Reads the upload into memory and rejects payloads larger than 50 MiB with `413`.
 - Returns `404` for an absent or foreign plan, `422` for invalid multipart data, and `503` when no
-  STT service object exists.
+  STT service object exists or the provider has an operational failure.
 - Returns `{ "text": string }`, including an empty string if the provider produces one.
+
+### `GET /api/speech/status`
+
+- Requires authentication.
+- Checks TTS and STT concurrently with a two-second timeout.
+- Returns independent provider availability and combined `voice_conversation` availability.
+- Hides provider exception text, credentials, and internal service addresses.
 
 The endpoint does not currently validate accepted MIME types, extensions, non-empty audio, or audio
 integrity.
@@ -146,7 +155,8 @@ Voice conversation uses its own capture pipeline and WebSocket contract, describ
 
 `AudioPlayer` requests TTS, creates a Blob URL, and plays it with the browser Audio API. Voice
 precedence is explicit prop, stored `tts_voice`, then backend default. It supports loading, playing,
-stop, and error states and is used across lessons, flashcards, vocabulary, chat, and phrasebook.
+stop, and error states and is used across lessons, flashcards, vocabulary, chat, and phrasebook. It
+checks cached TTS availability before requesting audio and marks TTS unavailable after a `503`.
 
 `VoiceRecorder`:
 
@@ -158,6 +168,8 @@ stop, and error states and is used across lessons, flashcards, vocabulary, chat,
 - awaits synchronous or asynchronous result handling before returning idle;
 - stops late permission streams and aborts pending STT on unmount;
 - prevents another recording while transcription or result handling is pending.
+- checks cached STT availability before requesting microphone permission and marks STT unavailable
+  after a `503`.
 
 The dedicated Next.js TTS route forwards authentication and trace context but buffers the backend
 audio before responding. The STT route parses and reconstructs multipart data, forwards auth and
@@ -179,8 +191,9 @@ Whisper services use internal network addresses and are not called from the fron
 ## Availability semantics
 
 Startup creates configured adapter objects but does not prove provider health. Administrative health
-checks call adapter `health()` methods. Conversation warmup attempts provider work in parallel but
-logs and suppresses individual failures, so a `ready` response is not a strict health guarantee.
+checks call adapter `health()` methods. The authenticated speech-status endpoint provides a short,
+cached frontend availability signal. Every speech operation still handles a later provider failure,
+because availability can change after a successful probe.
 
 ## Related specifications
 

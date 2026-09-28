@@ -28,6 +28,20 @@ vi.mock('@/lib/audio', () => ({
   float32ToWav: vi.fn(() => new ArrayBuffer(100)),
 }))
 
+vi.mock('@/store/speech', () => {
+  const state = {
+    sttAvailable: true,
+    check: vi.fn().mockResolvedValue(true),
+    markSttUnavailable: vi.fn(),
+  }
+  return {
+    useSpeechStore: Object.assign(
+      (selector: (value: typeof state) => unknown) => selector(state),
+      { getState: () => state },
+    ),
+  }
+})
+
 vi.mock('next-intl', () => ({
   useTranslations: () => (key: string) => key,
 }))
@@ -194,15 +208,16 @@ describe('VoiceRecorder', () => {
 
     fireEvent.click(button)
 
-    // setState('recording') runs synchronously before the await
-    expect(button.textContent).toContain('stop')
-    expect(button.getAttribute('aria-label')).toBe('ariaStop')
-    expect(mockGetUserMedia).toHaveBeenCalledWith({
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true,
-      },
+    await waitFor(() => {
+      expect(button.textContent).toContain('stop')
+      expect(button.getAttribute('aria-label')).toBe('ariaStop')
+      expect(mockGetUserMedia).toHaveBeenCalledWith({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      })
     })
   })
 

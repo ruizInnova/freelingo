@@ -131,41 +131,37 @@ services:
   # TTS (Kokoro-FastAPI) ──────────────────────────────────────────
   # Only required when TTS_PROVIDER=local (default).
   # Set TTS_PROVIDER=openai to use OpenAI TTS instead — no local service needed.
-  # Upstream image (0.4.0+), cu128 variant for Blackwell/RTX 50-series.
-  # For Maxwell/Pascal/Turing/Ampere/Hopper GPUs: use :latest (cu126).
-  # CPU-only host: use :cpu-latest and remove the 'deploy' block.
+  # Version-pinned CPU image for hosts without a dedicated GPU.
   # See: https://github.com/remsky/Kokoro-FastAPI
   kokoro:
-    image: ghcr.io/remsky/kokoro-fastapi-gpu:latest-cu128
+    image: ghcr.io/remsky/kokoro-fastapi-cpu:v0.9.0
     container_name: freelingo-kokoro
     restart: unless-stopped
     environment:
       - PYTHONUNBUFFERED=1
     deploy:
       resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
+        limits:
+          cpus: "2.0"
+          memory: 2500M
 
   # STT (faster-whisper) ──────────────────────────────────────────
   # Only required when STT_PROVIDER=local (default).
   # Set STT_PROVIDER=openai to use OpenAI Whisper API instead — no local service needed.
-  # GPU host (NVIDIA): uses the image below as-is.
-  # CPU-only host:     replace image tag with onerahmet/openai-whisper-asr-webservice:latest
-  #                    set ASR_MODEL=base or small, and remove the entire 'deploy' block.
+  # Version-pinned CPU image. The model cache persists across container recreation.
   whisper:
-    image: onerahmet/openai-whisper-asr-webservice:latest-gpu
+    image: onerahmet/openai-whisper-asr-webservice:v1.9.1
     container_name: freelingo-whisper
     restart: unless-stopped
     environment:
-      - ASR_MODEL=${STT_MODEL:-large-v3-turbo}
+      - ASR_MODEL=${STT_MODEL:-base}
       - ASR_ENGINE=${STT_ENGINE:-faster_whisper}
+      - ASR_DEVICE=cpu
+      - ASR_MODEL_PATH=/data/whisper
+    volumes:
+      - ${DATA_PATH}/whisper-cache:/data/whisper
     deploy:
       resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
+        limits:
+          cpus: "2.0"
+          memory: 1500M

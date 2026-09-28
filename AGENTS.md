@@ -18,7 +18,8 @@
 - Resource-owned STT requires a user-owned study plan and always sends an explicit recognition language.
 - Access authorization is enforced by the backend. Frontend flags and route guards are presentation/navigation aids only.
 - The backend auth design, refresh-token rotation, and storage rules in `specs/platform.instructions.md` must not be weakened.
-- TTS and STT are required platform services; provider contracts live in `specs/speech-services.instructions.md`.
+- TTS and STT are optional for the general platform and required only by features that use speech.
+  Their availability and provider contracts live in `specs/speech-services.instructions.md`.
 
 ## Visual conventions
 

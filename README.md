@@ -101,9 +101,9 @@ freelingo/
 
 ### Option A — Git clone + Docker Compose
 
-**Requirements:** Docker, Docker Compose, Git, either a supported cloud LLM API or
-[Ollama](https://ollama.com), and either an NVIDIA GPU for the default local speech services or an
-OpenAI API key for cloud speech.
+**Requirements:** Docker, Docker Compose, Git, and either a supported cloud LLM API or
+[Ollama](https://ollama.com). The default local speech services run on CPU and can be stopped when
+speech features are not needed.
 
 ```bash
 # 1. Clone the repository
@@ -173,7 +173,9 @@ The WebSocket URL is derived automatically from `window.location`, so no extra c
 
 ## Configuring TTS & STT
 
-TTS and STT are required services. Each supports two providers selected independently via `.env`.
+TTS and STT are optional for the general application and required only for features that synthesize
+or transcribe speech. Each supports two providers selected independently via `.env`. When a provider
+is unavailable, its controls are disabled and the rest of FreeLingo remains usable.
 
 ### Provider options
 
@@ -181,16 +183,17 @@ TTS and STT are required services. Each supports two providers selected independ
 - `STT_PROVIDER=local` uses faster-whisper; `STT_PROVIDER=openai` uses OpenAI Whisper.
 - `OPENAI_API_KEY` is required when either service uses OpenAI.
 
-The default local services in `docker-compose.yml` are configured for NVIDIA GPUs:
+The default local services in `docker-compose.yml` are version-pinned CPU images:
 
 ```env
 TTS_PROVIDER=local
 STT_PROVIDER=local
 ```
 
-Kokoro's bundled voices are English-only. Use OpenAI TTS for other study languages. For CPU-only local
-deployment, select CPU images, remove GPU reservations, and use a smaller Whisper model as documented
-in [the Docker specification](specs/docker.instructions.md).
+Kokoro uses `ghcr.io/remsky/kokoro-fastapi-cpu:v0.9.0`. Whisper uses
+`onerahmet/openai-whisper-asr-webservice:v1.9.1`, defaults to the `base` model, and persists its model
+cache below `${DATA_PATH}/whisper-cache`. Kokoro's bundled voices are English-only; use OpenAI TTS for
+other study languages.
 
 OpenAI providers require no local GPU or speech containers:
 
