@@ -16,7 +16,8 @@ applyTo: "docker-compose*.yml, .env.example, .env.dev, backend/Dockerfile, front
 - `frontend`: built from `frontend/Dockerfile`; exposes port 3000, talks to backend through private
   `BACKEND_URL`, and joins the external `proxy` network for Nginx Proxy Manager routing.
 - `kokoro`: version-pinned local CPU TTS image, used for `TTS_PROVIDER=local` and as the final fallback for `TTS_PROVIDER=chain`.
-- `whisper`: version-pinned local CPU STT image, used when `STT_PROVIDER=local`.
+- `whisper`: version-pinned local CPU STT image, used when `STT_PROVIDER=local` and retained as
+  the fallback when `STT_PROVIDER=chain`.
 
 Ollama is not a Compose service. The default configuration expects it on the host through
 `host.docker.internal:11434`. The backend service declares the Linux host-gateway mapping.

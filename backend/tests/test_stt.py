@@ -2,10 +2,16 @@ from inspect import Parameter, signature
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
+import httpx
 import pytest
 
 from app.main import app
-from app.services.stt_service import OpenAISTTService, WhisperSTTService
+from app.services.stt_service import (
+    CloudflareSTTService,
+    FallbackSTTService,
+    OpenAISTTService,
+    WhisperSTTService,
+)
 
 LANGUAGE_CASES = [
     ("en-US", "en"),
@@ -251,4 +257,65 @@ async def test_local_stt_forwards_required_language(monkeypatch) -> None:
         params={"output": "json", "language": "de", "task": "transcribe"},
         files={"audio_file": ("recording.wav", b"wav-bytes", "audio/wav")},
         timeout=60.0,
+    )
+
+
+@pytest.mark.asyncio
+async def test_cloudflare_stt_sends_audio_and_language(monkeypatch) -> None:
+    response = SimpleNamespace(
+        raise_for_status=lambda: None,
+        json=lambda: {"result": {"text": " Good morning! "}},
+    )
+    post = AsyncMock(return_value=response)
+
+    class FakeAsyncClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, traceback) -> None:
+            return None
+
+        async def post(self, *args, **kwargs):
+            return await post(*args, **kwargs)
+
+    monkeypatch.setattr("app.services.stt_service.httpx.AsyncClient", FakeAsyncClient)
+    service = CloudflareSTTService(
+        account_id="account-id",
+        api_token="secret-token",
+        model="@cf/openai/whisper-large-v3-turbo",
+        timeout=30.0,
+    )
+
+    text = await service.transcribe(b"wav-bytes", language="en")
+
+    assert text == "Good morning!"
+    kwargs = post.await_args.kwargs
+    assert kwargs["json"] == {
+        "audio": "d2F2LWJ5dGVz",
+        "task": "transcribe",
+        "language": "en",
+        "vad_filter": True,
+    }
+    assert kwargs["timeout"] == 30.0
+    assert kwargs["headers"] == {"Authorization": "Bearer secret-token"}
+    assert "secret-token" not in post.await_args.args[0]
+
+
+@pytest.mark.asyncio
+async def test_stt_chain_falls_back_to_local_provider() -> None:
+    cloudflare = SimpleNamespace(
+        transcribe=AsyncMock(side_effect=httpx.ConnectError("offline")),
+    )
+    whisper = SimpleNamespace(transcribe=AsyncMock(return_value="fallback text"))
+    service = FallbackSTTService([("cloudflare", cloudflare), ("whisper", whisper)])
+
+    text = await service.transcribe(b"audio", language="en")
+
+    assert text == "fallback text"
+    cloudflare.transcribe.assert_awaited_once()
+    whisper.transcribe.assert_awaited_once_with(
+        b"audio",
+        "audio.wav",
+        "audio/wav",
+        language="en",
     )

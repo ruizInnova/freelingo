@@ -75,6 +75,8 @@ services:
       STT_PROVIDER: ${STT_PROVIDER:-local}
       STT_BASE_URL: ${STT_BASE_URL:-http://whisper:9000}
       OPENAI_STT_MODEL: ${OPENAI_STT_MODEL:-whisper-1}
+      CLOUDFLARE_STT_MODEL: "${CLOUDFLARE_STT_MODEL:-@cf/openai/whisper-large-v3-turbo}"
+      STT_CLOUD_TIMEOUT_SECONDS: ${STT_CLOUD_TIMEOUT_SECONDS:-30}
       CORS_ORIGINS: ${CORS_ORIGINS:-["http://localhost:3000"]}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
       ALLOW_REGISTRATION: ${ALLOW_REGISTRATION:-true}
@@ -162,8 +164,8 @@ services:
           memory: 2500M
 
   # STT (faster-whisper) ──────────────────────────────────────────
-  # Only required when STT_PROVIDER=local (default).
-  # Set STT_PROVIDER=openai to use OpenAI Whisper API instead — no local service needed.
+  # Used by STT_PROVIDER=local and as the final fallback for STT_PROVIDER=chain.
+  # Set STT_PROVIDER=openai to use OpenAI Whisper API without this local service.
   # Version-pinned CPU image. The model cache persists across container recreation.
   whisper:
     image: onerahmet/openai-whisper-asr-webservice:v1.9.1

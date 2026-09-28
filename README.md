@@ -93,7 +93,7 @@ freelingo/
 - **Backend:** FastAPI, SQLAlchemy async, Alembic, Pydantic v2
 - **Data:** PostgreSQL 16 and Redis 7
 - **LLM:** Ollama, OpenAI, Anthropic, DeepSeek, or MiniMax
-- **Speech:** browser speech, Cloudflare MeloTTS, Gemini Flash Lite TTS, Kokoro-FastAPI, or OpenAI TTS; faster-whisper or OpenAI Whisper
+- **Speech:** browser speech, Cloudflare MeloTTS, Gemini Flash Lite TTS, Kokoro-FastAPI, or OpenAI TTS; Cloudflare Whisper, faster-whisper, or OpenAI Whisper
 - **Auth:** JWT access and refresh tokens with admin/user roles
 - **Deployment:** Docker Compose
 
@@ -148,7 +148,7 @@ disable this behavior.
 - The `LLM_PROVIDER` field controls the LLM provider: `ollama` (local, recommended), `openai`, `anthropic`, `deepseek`, or `minimax`.
 - MiniMax uses its OpenAI-compatible endpoint with `MINIMAX_API_KEY`, `MINIMAX_BASE_URL`, and `MINIMAX_MODEL`; reasoning is separated from learner-visible output.
 - Anthropic's output budget is configurable with `ANTHROPIC_MAX_TOKENS` (default: `8192`) and must stay within the selected model's supported output limit.
-- `TTS_PROVIDER` supports `local`, `openai`, or `chain`; chain mode uses Cloudflare, Gemini, then Kokoro with persistent caching. `STT_PROVIDER` supports `local` or `openai`.
+- `TTS_PROVIDER` supports `local`, `openai`, or `chain`; chain mode uses Cloudflare, Gemini, then Kokoro with persistent caching. `STT_PROVIDER` supports `local`, `openai`, or `chain`; STT chain mode uses Cloudflare Whisper followed by local Whisper.
 - Conversation, token, freemium, and trial limits are configurable in `.env.example`. In general
   quota defaults, `0` means unlimited; in freemium feature quotas, `0` blocks that feature.
 - Supported study languages include English (`en-GB`, `en-US`), Spanish (`es-ES`), Italian (`it-IT`), Portuguese (`pt-PT`), German (`de-DE`), French (`fr-FR`), Japanese (`ja-JP`), Korean (`ko-KR`), and Mainland Chinese (`zh-CN`). The study language is chosen on `/onboarding` and can be expanded later from Settings → My Languages. The user's native language is asked during registration and is used for flashcard translations, tutor feedback, lesson native explanations, and cached native-language help in static grammar, phrasebook, and vocabulary resources.
@@ -183,7 +183,8 @@ is unavailable, its controls are disabled and the rest of FreeLingo remains usab
 ### Provider options
 
 - `TTS_PROVIDER=local` uses Kokoro-FastAPI; `openai` uses OpenAI TTS; `chain` tries Cloudflare MeloTTS, Gemini Flash Lite TTS, then Kokoro.
-- `STT_PROVIDER=local` uses faster-whisper; `STT_PROVIDER=openai` uses OpenAI Whisper.
+- `STT_PROVIDER=local` uses faster-whisper; `STT_PROVIDER=openai` uses OpenAI Whisper;
+  `STT_PROVIDER=chain` uses Cloudflare Workers AI first and faster-whisper as fallback.
 - `OPENAI_API_KEY` is required when either service uses OpenAI.
 
 Chain mode skips cloud providers whose credentials are absent, so it can be enabled before both keys

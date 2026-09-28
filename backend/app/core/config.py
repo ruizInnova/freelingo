@@ -39,9 +39,11 @@ class Settings(BaseSettings):
     TTS_CLOUD_TIMEOUT_SECONDS: float = 20.0
     TTS_FALLBACK_COOLDOWN_SECONDS: int = 900
     TTS_CACHE_PATH: str = "/data/audio/tts-cache"
-    STT_PROVIDER: str = "local"  # local | openai
+    STT_PROVIDER: str = "local"  # local | openai | chain
     STT_BASE_URL: str = "http://whisper:9000"
     OPENAI_STT_MODEL: str = "whisper-1"
+    CLOUDFLARE_STT_MODEL: str = "@cf/openai/whisper-large-v3-turbo"
+    STT_CLOUD_TIMEOUT_SECONDS: float = 30.0
     RATE_LIMIT_ENABLED: bool = True
     CORS_ORIGINS: list[str] = ["http://localhost:3000"]
     COOKIE_SECURE: bool = False

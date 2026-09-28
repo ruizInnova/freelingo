@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 ### Added
 
+- Optional chained STT uses Cloudflare Whisper Large V3 Turbo first and local faster-whisper as an
+  automatic fallback, preserving explicit study-language recognition.
 - Optional chained TTS can use Cloudflare MeloTTS, Gemini Flash Lite TTS, and local Kokoro in
   order, with persistent MP3 caching, quota-aware cooldowns, and WAV-to-MP3 conversion for Gemini.
 - MiniMax is available as an LLM provider through its OpenAI-compatible API, including streaming,

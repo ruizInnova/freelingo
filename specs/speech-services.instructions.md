@@ -34,9 +34,13 @@ TTS configuration:
 
 STT configuration:
 
-- `STT_PROVIDER=local` selects the local Whisper service; `openai` selects OpenAI transcription.
+- `STT_PROVIDER=local` selects the local Whisper service; `openai` selects OpenAI transcription;
+  `chain` selects Cloudflare Whisper followed by local Whisper as an automatic fallback.
 - `STT_BASE_URL` defaults to `http://whisper:9000`.
 - `OPENAI_STT_MODEL` defaults to `whisper-1`.
+- `CLOUDFLARE_STT_MODEL` defaults to `@cf/openai/whisper-large-v3-turbo` and reuses
+  `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_AI_TOKEN`.
+- `STT_CLOUD_TIMEOUT_SECONDS` defaults to 30 seconds.
 - `STT_MODEL` and `STT_ENGINE` configure the local Whisper container as `ASR_MODEL` and
   `ASR_ENGINE`; they are not backend `Settings` fields.
 
@@ -98,8 +102,12 @@ Neither current TTS adapter chooses a model or voice automatically from the targ
 
 ## STT adapters
 
-Both STT adapters require an explicit keyword-only ISO 639-1 language on every transcription call.
+All STT adapters require an explicit keyword-only ISO 639-1 language on every transcription call.
 There is no implicit English fallback.
+
+`CloudflareSTTService` sends base64 audio, the explicit language, transcription task, and voice
+activity filtering to Workers AI. `FallbackSTTService` tries Cloudflare first and local Whisper after
+an operational Cloudflare failure or empty transcription.
 
 `WhisperSTTService`:
 

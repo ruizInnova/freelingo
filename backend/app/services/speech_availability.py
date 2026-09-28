@@ -4,6 +4,7 @@ from typing import Any
 import httpx
 import openai
 
+from app.services.stt_service import STTUnavailableError
 from app.services.tts_service import TTSUnavailableError
 
 SPEECH_HEALTH_TIMEOUT_SECONDS = 2.0
@@ -11,6 +12,7 @@ OPERATIONAL_SPEECH_ERRORS = (
     httpx.HTTPError,
     openai.APIError,
     TimeoutError,
+    STTUnavailableError,
     TTSUnavailableError,
 )
 

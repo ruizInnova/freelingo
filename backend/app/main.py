@@ -52,7 +52,12 @@ from app.routers import (
 )
 from app.routers import config as config_router
 from app.routers import health as health_router
-from app.services.stt_service import OpenAISTTService, WhisperSTTService
+from app.services.stt_service import (
+    CloudflareSTTService,
+    FallbackSTTService,
+    OpenAISTTService,
+    WhisperSTTService,
+)
 from app.services.tts_service import (
     CachedTTSService,
     CloudflareTTSService,
@@ -139,6 +144,22 @@ async def lifespan(app: FastAPI):  # noqa: ANN201
             api_key=settings.OPENAI_API_KEY,
             model=settings.OPENAI_STT_MODEL,
         )
+    elif settings.STT_PROVIDER == "chain":
+        stt_providers = []
+        if settings.CLOUDFLARE_ACCOUNT_ID and settings.CLOUDFLARE_AI_TOKEN:
+            stt_providers.append(
+                (
+                    "cloudflare",
+                    CloudflareSTTService(
+                        account_id=settings.CLOUDFLARE_ACCOUNT_ID,
+                        api_token=settings.CLOUDFLARE_AI_TOKEN,
+                        model=settings.CLOUDFLARE_STT_MODEL,
+                        timeout=settings.STT_CLOUD_TIMEOUT_SECONDS,
+                    ),
+                )
+            )
+        stt_providers.append(("whisper", WhisperSTTService(settings.STT_BASE_URL)))
+        app.state.stt_service = FallbackSTTService(stt_providers)
     else:
         app.state.stt_service = WhisperSTTService(settings.STT_BASE_URL)
 
