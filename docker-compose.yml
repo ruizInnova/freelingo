@@ -117,8 +117,8 @@ services:
 
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: frontend/Dockerfile
     container_name: freelingo-frontend
     restart: unless-stopped
     environment:
