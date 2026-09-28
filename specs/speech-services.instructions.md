@@ -103,7 +103,7 @@ There is no implicit English fallback.
 
 `WhisperSTTService`:
 
-- checks health with `GET {base_url}/` and a five-second timeout;
+- checks health with `GET {base_url}/`, follows the service's `/docs` redirect, and uses a five-second timeout;
 - sends `POST {base_url}/asr` with `output=json`, explicit `language`, and `task=transcribe`;
 - uploads the file under multipart field `audio_file`;
 - uses a 60-second timeout;

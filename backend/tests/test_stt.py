@@ -186,6 +186,34 @@ async def test_openai_stt_forwards_required_language(monkeypatch) -> None:
 
 
 @pytest.mark.asyncio
+async def test_local_stt_health_follows_root_redirect(monkeypatch) -> None:
+    response = SimpleNamespace(raise_for_status=lambda: None)
+    get = AsyncMock(return_value=response)
+    clients: list[bool] = []
+
+    class FakeAsyncClient:
+        def __init__(self, *, follow_redirects: bool = False) -> None:
+            clients.append(follow_redirects)
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, traceback) -> None:
+            return None
+
+        async def get(self, *args, **kwargs):
+            return await get(*args, **kwargs)
+
+    monkeypatch.setattr("app.services.stt_service.httpx.AsyncClient", FakeAsyncClient)
+    service = WhisperSTTService(base_url="http://whisper:9000")
+
+    await service.health()
+
+    assert clients == [True]
+    get.assert_awaited_once_with("http://whisper:9000/", timeout=5.0)
+
+
+@pytest.mark.asyncio
 async def test_local_stt_forwards_required_language(monkeypatch) -> None:
     response = SimpleNamespace(
         status_code=200,

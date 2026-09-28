@@ -14,7 +14,7 @@ class WhisperSTTService:
 
     async def health(self) -> None:
         """Raise if Whisper ASR is unreachable."""
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(follow_redirects=True) as client:
             r = await client.get(f"{self.base_url}/", timeout=5.0)
             r.raise_for_status()
 
