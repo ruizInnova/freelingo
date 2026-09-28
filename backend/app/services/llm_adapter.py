@@ -678,6 +678,18 @@ class LLMAdapter:
         if self.provider == "anthropic":
             return await self._anthropic_chat(messages, stream, tools)
 
+        # MiniMax rejects requests containing only system messages with
+        # `chat content is empty (2013)`. Several generation flows use a
+        # system-only prompt, so add an explicit user turn for this provider.
+        if self.provider == "minimax" and not any(
+            message.get("role") != "system" and str(message.get("content", "")).strip()
+            for message in messages
+        ):
+            messages = [
+                *messages,
+                {"role": "user", "content": ANTHROPIC_SYSTEM_ONLY_TRIGGER},
+            ]
+
         # For Ollama, OpenAI and DeepSeek (all OpenAI-compatible):
         # pass stream_options so the final chunk includes token usage.
         # Defensively build kwargs to stay compatible with older SDK versions.

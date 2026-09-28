@@ -354,6 +354,31 @@ class TestLLMAdapterInit:
         assert result == "Hello"
         assert create.await_args.kwargs["extra_body"] == {"reasoning_split": True}
 
+    async def test_minimax_system_only_prompt_injects_user_turn(self, monkeypatch):
+        monkeypatch.setattr("app.core.config.settings.LLM_PROVIDER", "minimax")
+        monkeypatch.setattr("app.core.config.settings.MINIMAX_API_KEY", "minimax-test")
+        monkeypatch.setattr(
+            "app.core.config.settings.MINIMAX_BASE_URL", "https://api.minimax.io/v1"
+        )
+        monkeypatch.setattr("app.core.config.settings.MINIMAX_MODEL", "MiniMax-M2.7")
+
+        from app.services.llm_adapter import LLMAdapter
+
+        adapter = LLMAdapter()
+        create = AsyncMock(
+            return_value=SimpleNamespace(
+                choices=[SimpleNamespace(message=SimpleNamespace(content="{}"))]
+            )
+        )
+        adapter.client.chat.completions.create = create
+
+        await adapter._do_chat([{"role": "system", "content": "Generate a lesson"}])
+
+        assert create.await_args.kwargs["messages"] == [
+            {"role": "system", "content": "Generate a lesson"},
+            {"role": "user", "content": "Generate the content as specified."},
+        ]
+
 
 # ---------------------------------------------------------------------------
 # LLMAdapter.chat (non-streaming) — OpenAI-compatible providers
