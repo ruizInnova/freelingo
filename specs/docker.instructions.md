@@ -11,10 +11,10 @@ applyTo: "docker-compose*.yml, .env.example, .env.dev, backend/Dockerfile, front
 
 - `postgres`: PostgreSQL 16 with authenticated health check.
 - `redis`: Redis 7 with password and authenticated health check.
-- `backend`: published FreeLingo image; waits for PostgreSQL and Redis, applies existing Alembic
+- `backend`: built from `backend/Dockerfile`; waits for PostgreSQL and Redis, applies existing Alembic
   revisions, then starts Uvicorn.
-- `frontend`: published FreeLingo image; exposes port 3000 and talks to backend through private
-  `BACKEND_URL`.
+- `frontend`: built from `frontend/Dockerfile`; exposes port 3000, talks to backend through private
+  `BACKEND_URL`, and joins the external `proxy` network for Nginx Proxy Manager routing.
 - `kokoro`: version-pinned local CPU TTS image, used when `TTS_PROVIDER=local`.
 - `whisper`: version-pinned local CPU STT image, used when `STT_PROVIDER=local`.
 
@@ -41,6 +41,7 @@ lockfile through `npm ci`. Production uses Next.js standalone output.
 
 Push workflows for `main` and `develop` build and publish separate Linux `amd64` and `arm64` image
 names with `latest` and short-SHA tags. They publish images only; they do not deploy to a VPS.
+Production Compose builds the checked-out revision locally so branch deployments run their own code.
 
 ## Persistence
 

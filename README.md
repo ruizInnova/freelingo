@@ -121,6 +121,9 @@ ollama pull gemma4:e4b
 docker compose up -d
 ```
 
+Production Compose builds the backend and frontend from the checked-out revision. This ensures a
+branch deployment uses that branch's application code instead of an unrelated prebuilt image.
+
 Access at `http://localhost:3000` (or `http://<server-ip>:3000`).
 By default, the first registered user becomes an administrator; set `FIRST_USER_IS_ADMIN=false` to
 disable this behavior.

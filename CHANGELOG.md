@@ -18,6 +18,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 - Local Kokoro and faster-whisper deployment now uses version-pinned CPU images, bounded CPU and
   memory resources, the Whisper `base` model, and a persistent Whisper model cache.
+- Production Compose builds backend and frontend from the selected repository revision and attaches
+  the frontend to the external `proxy` network for Nginx Proxy Manager routing.
 - Speech availability is cached in shared frontend state. TTS playback, recording, and voice
   conversation disable only the controls that depend on an unavailable service and can retry without
   interrupting the rest of the application.
