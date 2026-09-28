@@ -61,6 +61,16 @@ export function VoiceRecorder({
     }
   }, [])
 
+  useEffect(() => {
+    if (speechAvailable !== false) return
+
+    const retry = setInterval(() => {
+      void checkSpeech(true)
+    }, 15_000)
+
+    return () => clearInterval(retry)
+  }, [checkSpeech, speechAvailable])
+
   function cleanupAudio() {
     if (autoStopRef.current) {
       clearTimeout(autoStopRef.current)

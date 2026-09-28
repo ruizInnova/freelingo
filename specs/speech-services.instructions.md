@@ -194,8 +194,8 @@ checks cached TTS availability before requesting audio and marks TTS unavailable
 - awaits synchronous or asynchronous result handling before returning idle;
 - stops late permission streams and aborts pending STT on unmount;
 - prevents another recording while transcription or result handling is pending.
-- checks cached STT availability before requesting microphone permission and marks STT unavailable
-  after a `503`.
+- checks cached STT availability before requesting microphone permission, marks STT unavailable
+  after a `503`, and retries the availability probe every 15 seconds while the recorder is disabled.
 
 The dedicated Next.js TTS route forwards authentication and trace context but buffers the backend
 audio before responding. The STT route parses and reconstructs multipart data, forwards auth and

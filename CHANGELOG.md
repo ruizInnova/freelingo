@@ -28,6 +28,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 ### Fixed
 
+- Voice recording automatically rechecks STT after a temporary deployment or service outage.
 - Provider transport failures from TTS and STT now return controlled HTTP 503 responses. Voice
   warmup and WebSocket startup reject unavailable speech services before consuming conversation quota
   or creating a session.
