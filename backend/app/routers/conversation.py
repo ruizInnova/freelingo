@@ -192,13 +192,10 @@ async def _warmup_tts(tts_service: object) -> None:
 
 async def _warmup_stt(stt_service: object) -> None:
     try:
-        wav = _make_silence_wav()
-        await stt_service.transcribe(  # type: ignore[union-attr]
-            wav,
-            "warmup.wav",
-            "audio/wav",
-            language="en",
-        )
+        # A real CPU transcription can exceed the frontend warmup timeout while
+        # the Whisper model is cold. Availability is sufficient here; the
+        # conversation pipeline performs the first real transcription.
+        await stt_service.health()  # type: ignore[union-attr]
         logger.info("[warmup] STT ready")
     except Exception as exc:
         logger.warning("[warmup] STT warmup error: %s", exc)

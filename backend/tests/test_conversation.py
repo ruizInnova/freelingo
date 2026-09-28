@@ -139,17 +139,15 @@ async def test_warmup_tts_falls_back_to_synthesis_for_local_service() -> None:
 
 
 @pytest.mark.asyncio
-async def test_warmup_stt_passes_explicit_language() -> None:
+async def test_warmup_stt_uses_health_without_blocking_transcription() -> None:
     stt_service = type("STTMock", (object,), {})()
+    stt_service.health = AsyncMock()
     stt_service.transcribe = AsyncMock()
 
     await conversation_router._warmup_stt(stt_service)
 
-    stt_service.transcribe.assert_awaited_once()
-    args = stt_service.transcribe.await_args.args
-    assert args[0].startswith(b"RIFF")
-    assert args[1:] == ("warmup.wav", "audio/wav")
-    assert stt_service.transcribe.await_args.kwargs == {"language": "en"}
+    stt_service.health.assert_awaited_once_with()
+    stt_service.transcribe.assert_not_awaited()
 
 
 @pytest.mark.asyncio

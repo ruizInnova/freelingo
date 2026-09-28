@@ -22,7 +22,7 @@ The frontend startup order is:
 2. Create session and attempt identities plus an AudioContext.
 3. Request and own a mono microphone stream.
 4. Supply that stream to VAD and await serialized `vad.start()`.
-5. Call `POST /api/conversation/warmup` with a 15-second client timeout.
+5. Call `POST /api/conversation/warmup` with a 15-second client timeout. The endpoint checks STT health without running a blocking CPU transcription.
 6. Refresh the access token reference.
 7. Open `/ws/conversation` and send the authentication payload.
 
