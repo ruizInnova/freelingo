@@ -195,7 +195,11 @@ describe('AudioPlayer', () => {
     })
 
     expect(speak).toHaveBeenCalledOnce()
-    expect(spoken).toMatchObject({ text: 'I am a student.', lang: 'en-US' })
+    expect(spoken).toMatchObject({
+      text: 'I am a student.',
+      lang: 'en-US',
+      rate: 0.85,
+    })
     expect(spoken).toMatchObject({ voice: { lang: 'en-US' } })
     expect(fetchMock).not.toHaveBeenCalled()
     expect(screen.getByText(PAUSE)).toBeDefined()

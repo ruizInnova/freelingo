@@ -662,7 +662,12 @@ export default function LessonPage() {
                             >
                               {ex.sentence}
                             </TargetLanguageText>
-                            <AudioPlayer text={ex.sentence} size="sm" />
+                            <AudioPlayer
+                              text={ex.sentence}
+                              size="sm"
+                              preferBrowserVoice
+                              language={targetLanguageCode}
+                            />
                           </div>
                           {ex.note && (
                             <p className="text-fl-muted-1 mt-0.5 font-sans text-sm leading-relaxed">
@@ -991,7 +996,12 @@ export default function LessonPage() {
                     >
                       {exercise.correct_answer}
                     </TargetLanguageText>
-                    <AudioPlayer text={exercise.correct_answer} size="md" />
+                    <AudioPlayer
+                      text={exercise.correct_answer}
+                      size="md"
+                      preferBrowserVoice
+                      language={targetLanguageCode}
+                    />
                   </div>
                   {exercise.options?.[0] && (
                     <TargetLanguageText

@@ -215,6 +215,7 @@ export function AudioPlayer({
       setState('loading')
       const utterance = new SpeechSynthesisUtterance(text)
       utterance.lang = language || 'en-US'
+      utterance.rate = 0.85
       const matchingVoice = await findBrowserVoice(utterance.lang)
       if (!matchingVoice) {
         await playServerAudio()
