@@ -125,6 +125,11 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    networks:
+      default: {}
+      proxy:
+        aliases:
+          - freelingo-backend
 
   frontend:
     build:

@@ -30,6 +30,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 ### Fixed
 
+- The backend now joins the reverse-proxy network so production WebSocket conversation connections
+  can reach `/ws/conversation` instead of terminating at the Next.js frontend.
 - Voice conversation warmup checks Whisper health without blocking on a cold CPU transcription.
 - Local Whisper health checks follow its root redirect instead of reporting STT as disabled.
 - Voice recording automatically rechecks STT after a temporary deployment or service outage.

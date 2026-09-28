@@ -18,6 +18,8 @@ applyTo: "docker-compose*.yml, .env.example, .env.dev, backend/Dockerfile, front
 - `kokoro`: version-pinned local CPU TTS image, used for `TTS_PROVIDER=local` and as the final fallback for `TTS_PROVIDER=chain`.
 - `whisper`: version-pinned local CPU STT image, used when `STT_PROVIDER=local` and retained as
   the fallback when `STT_PROVIDER=chain`.
+- `backend` joins the external `proxy` network with alias `freelingo-backend` so Nginx Proxy
+  Manager can route `/ws/conversation` directly to port 8000 with WebSocket upgrade headers.
 
 Ollama is not a Compose service. The default configuration expects it on the host through
 `host.docker.internal:11434`. The backend service declares the Linux host-gateway mapping.
